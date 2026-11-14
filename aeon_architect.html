@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aeon Architect: The Memory Weaver</title>
+  <style>
+    :root {
+      --bg-core: #030712;
+      --bg-panel: rgba(17, 24, 39, 0.85);
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.4);
+      --accent-purple: #c084fc;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --danger: #f43f5e;
+      --success: #10b981;
+      --warning: #fbbf24;
+      --border: rgba(56, 189, 248, 0.25);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-core);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Starfield Canvas */
+    #space-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Warp / Breach Flash */
+    #flash-overlay {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle, #ffffff 0%, var(--accent) 50%, #000 100%);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 100;
+      transition: opacity 0.5s ease;
+    }
+    #flash-overlay.active {
+      opacity: 0.85;
+    }
+
+    .container {
+      position: relative;
+      z-index: 10;
+      width: 95%;
+      max-width: 960px;
+      background: var(--bg-panel);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 30px var(--accent-glow);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 620px;
+    }
+
+    /* Top HUD */
+    .hud {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 24px;
+      background: rgba(3, 7, 18, 0.92);
+      border-bottom: 1px solid var(--border);
+      gap: 12px;
+    }
+
+    .hud-brand {
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      color: var(--accent);
+      text-transform: uppercase;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hud-stats {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .stat-pill {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-icon {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 6px 11px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+
+    .btn-icon:hover {
+      background: var(--accent);
+      color: #000;
+    }
+
+    /* Main Stage */
+    .stage {
+      flex: 1;
+      padding: 26px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 22px;
+    }
+
+    .node-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-left: 4px solid var(--accent);
+      padding-left: 14px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .node-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .node-era {
+      font-size: 0.8rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* VN Scene Box */
+    .vn-scene {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 20px;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    @media (max-width: 660px) {
+      .vn-scene {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+      .avatar-box {
+        margin: 0 auto;
+      }
+    }
+
+    .avatar-box {
+      width: 150px;
+      height: 150px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(56,189,248,0.15), rgba(192,132,252,0.2));
+      border: 1px solid var(--border);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .dialogue-box {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .speaker-name {
+      font-weight: 700;
+      color: var(--accent);
+      font-size: 1rem;
+      letter-spacing: 0.5px;
+    }
+
+    .dialogue-text {
+      font-size: 1.03rem;
+      line-height: 1.65;
+      color: var(--text-main);
+      min-height: 80px;
+    }
+
+    .memory-fragment-tag {
+      display: inline-block;
+      padding: 4px 10px;
+      background: rgba(192, 132, 252, 0.2);
+      border: 1px solid var(--accent-purple);
+      border-radius: 6px;
+      font-size: 0.8rem;
+      color: #e9d5ff;
+    }
+
+    /* Choices */
+    .choices-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .choice-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 13px 18px;
+      border-radius: 10px;
+      text-align: left;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .choice-btn:hover:not(:disabled) {
+      background: rgba(56, 189, 248, 0.14);
+      border-color: var(--accent);
+      transform: translateX(6px);
+    }
+
+    .choice-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .choice-meta {
+      font-size: 0.78rem;
+      color: var(--warning);
+      white-space: nowrap;
+    }
+
+    /* Hub / Nexus Sanctuaries */
+    .nexus-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 720px) {
+      .nexus-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 18px;
+    }
+
+    .panel h3 {
+      font-size: 1.05rem;
+      color: var(--accent);
+      margin-bottom: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding-bottom: 6px;
+    }
+
+    .upgrade-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 9px 0;
+      border-bottom: 1px dashed rgba(255,255,255,0.08);
+      gap: 10px;
+    }
+
+    .upgrade-item:last-child {
+      border-bottom: none;
+    }
+
+    .upgrade-info strong {
+      display: block;
+      font-size: 0.9rem;
+    }
+
+    .upgrade-info small {
+      color: var(--text-muted);
+      font-size: 0.78rem;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #0284c7);
+      color: #000;
+      font-weight: 700;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px var(--accent-glow);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.07);
+      color: var(--text-main);
+      font-weight: 600;
+      border: 1px solid var(--border);
+      padding: 10px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: var(--accent);
+    }
+
+    .relic-slots {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+
+    .relic-slot {
+      aspect-ratio: 1;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px dashed rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-size: 1.4rem;
+      padding: 4px;
+      text-align: center;
+    }
+
+    .relic-slot.unlocked {
+      border: 1px solid var(--accent);
+      background: rgba(56, 189, 248, 0.12);
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .relic-slot span {
+      font-size: 0.6rem;
+      margin-top: 4px;
+      color: var(--text-muted);
+    }
+
+    .title-screen {
+      text-align: center;
+      padding: 40px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      flex: 1;
+    }
+
+    .title-screen h1 {
+      font-size: 2.5rem;
+      background: linear-gradient(90deg, #38bdf8, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: 1px;
+    }
+
+    .title-screen p {
+      max-width: 600px;
+      color: var(--text-muted);
+      line-height: 1.65;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 6px;
+    }
+
+    /* Modal Codex */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.85);
+      backdrop-filter: blur(6px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 200;
+      padding: 16px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-card {
+      background: #0f172a;
+      border: 1px solid var(--accent);
+      box-shadow: 0 0 35px var(--accent-glow);
+      border-radius: 16px;
+      max-width: 620px;
+      width: 100%;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 10px;
+    }
+
+    .modal-header h2 {
+      font-size: 1.2rem;
+      color: var(--accent);
+    }
+
+    .codex-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      font-size: 0.93rem;
+      line-height: 1.6;
+      color: var(--text-main);
+    }
+
+    .codex-list li {
+      background: rgba(255, 255, 255, 0.04);
+      border-left: 3px solid var(--accent);
+      padding: 10px 14px;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .codex-list strong {
+      color: var(--warning);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="space-canvas"></canvas>
+  <div id="flash-overlay"></div>
+
+  <!-- Codex / Guide Modal -->
+  <div class="modal-backdrop" id="codex-modal" onclick="if(event.target === this) toggleCodex(false)">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>📜 Codex Arsitek Memori</h2>
+        <button class="btn-icon" onclick="toggleCodex(false)">✕</button>
+      </div>
+      <ul class="codex-list">
+        <li>
+          <strong>1. Peran Arsitek:</strong><br/>
+          Kamu adalah penjaga terakhir stasiun Aeon. Tugasmu adalah menyelami memori peradaban runtuh dan menyusun ulang simpul waktu.
+        </li>
+        <li>
+          <strong>2. Statistik Vital:</strong><br/>
+          • <strong>🌌 Keselarasan Memori:</strong> Energi simpul yang memastikan memori tidak korup. Jika menyentuh <strong>0%</strong>, memori runtuh total.<br/>
+          • <strong>🛡️ Stabilitas Neural:</strong> Ketahanan mental suit arsitek. Tindakan ekstrem dapat menguras stabilitas.<br/>
+          • <strong>✨ Kensa (KE):</strong> Esensi waktu yang diperoleh dari setiap rekonstruksi memori untuk dibelanjakan di Nexus.
+        </li>
+        <li>
+          <strong>3. Relik Kosmik & True Ending:</strong><br/>
+          Kumpulkan seluruh <strong>5 Relik Peradaban</strong> dari berbagai simpul memori untuk membuka <strong>True Ending: Pencipta Aeon Baru</strong>.
+        </li>
+      </ul>
+      <div style="display:flex; justify-content: flex-end; margin-top: 4px;">
+        <button class="btn-primary" onclick="toggleCodex(false)">Mengerti, Arsitek</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Top HUD -->
+    <div class="hud">
+      <div class="hud-brand">🌌 AEON ARCHITECT</div>
+      <div class="hud-stats">
+        <div class="stat-pill" title="Simpul Memori">⏱️ Simpul: <span id="stat-node">1</span>/5</div>
+        <div class="stat-pill" title="Esensi Kensa">✨ <span id="stat-kensa">100</span> KE</div>
+        <div class="stat-pill" title="Keselarasan Memori">🌌 <span id="stat-sync">100</span>%</div>
+        <div class="stat-pill" title="Stabilitas Neural">🛡️ <span id="stat-stability">100</span>%</div>
+        <button class="btn-icon" onclick="toggleCodex(true)" title="Codex">📜 Codex</button>
+        <button class="btn-icon" id="btn-audio" title="Audio Ambient">🔊</button>
+      </div>
+    </div>
+
+    <!-- Dynamic Stage -->
+    <div class="stage" id="app-stage">
+      <!-- Injected via JS -->
+    </div>
+  </div>
+
+  <script>
+    /* ================= PROCEDURAL SYNTHESIZER ================= */
+    const SoundSystem = {
+      ctx: null,
+      muted: false,
+      init() {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+      },
+      playNote(freq, type = 'sine', duration = 0.1, vol = 0.04) {
+        if (this.muted) return;
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + duration);
+      },
+      playChime() {
+        this.playNote(440, 'sine', 0.15, 0.03);
+        setTimeout(() => this.playNote(659.25, 'sine', 0.25, 0.03), 100);
+      },
+      playWarp() {
+        if (this.muted) return;
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(100, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.4);
+        gain.gain.setValueAtTime(0.07, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.45);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.45);
+      }
+    };
+
+    document.getElementById('btn-audio').addEventListener('click', (e) => {
+      SoundSystem.muted = !SoundSystem.muted;
+      e.target.textContent = SoundSystem.muted ? '🔇' : '🔊';
+    });
+
+    /* ================= STARFIELD BACKGROUND ================= */
+    const canvas = document.getElementById('space-canvas');
+    const ctx = canvas.getContext('2d');
+    let starColor = '#38bdf8';
+    let stars = [];
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    for (let i = 0; i < 75; i++) {
+      stars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 2 + 0.5,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4
+      });
+    }
+
+    function renderStars() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = starColor;
+      stars.forEach(s => {
+        s.x += s.vx;
+        s.y += s.vy;
+        if (s.x < 0) s.x = canvas.width;
+        if (s.x > canvas.width) s.x = 0;
+        if (s.y < 0) s.y = canvas.height;
+        if (s.y > canvas.height) s.y = 0;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      requestAnimationFrame(renderStars);
+    }
+    renderStars();
+
+    /* ================= SVG AVATARS ================= */
+    const Avatars = {
+      coreAI: `<svg viewBox="0 0 120 120" width="120" height="120">
+        <circle cx="60" cy="60" r="46" fill="#0c2038" stroke="#38bdf8" stroke-width="2"/>
+        <polygon points="60,30 85,75 35,75" fill="none" stroke="#38bdf8" stroke-width="2.5"/>
+        <circle cx="60" cy="58" r="8" fill="#c084fc"/>
+      </svg>`,
+      nebula: `<svg viewBox="0 0 120 120" width="120" height="120">
+        <circle cx="60" cy="60" r="44" fill="#2e1065" stroke="#e879f9" stroke-width="2"/>
+        <path d="M40 50 Q60 30 80 50 Q90 70 60 90 Q30 70 40 50 Z" fill="#c084fc" opacity="0.4"/>
+        <circle cx="48" cy="55" r="4" fill="#fff"/>
+        <circle cx="72" cy="55" r="4" fill="#fff"/>
+      </svg>`,
+      clockwork: `<svg viewBox="0 0 120 120" width="120" height="120">
+        <circle cx="60" cy="60" r="42" fill="#291b0c" stroke="#fbbf24" stroke-width="2.5"/>
+        <circle cx="60" cy="60" r="18" fill="none" stroke="#fbbf24" stroke-width="3"/>
+        <line x1="60" y1="60" x2="60" y2="44" stroke="#fbbf24" stroke-width="3"/>
+        <line x1="60" y1="60" x2="72" y2="60" stroke="#fbbf24" stroke-width="3"/>
+      </svg>`,
+      crystal: `<svg viewBox="0 0 120 120" width="120" height="120">
+        <polygon points="60,16 95,50 78,102 42,102 25,50" fill="#064e3b" stroke="#34d399" stroke-width="2.5"/>
+        <line x1="60" y1="16" x2="60" y2="102" stroke="#34d399" stroke-width="1.5"/>
+        <line x1="25" y1="50" x2="95" y2="50" stroke="#34d399" stroke-width="1.5"/>
+      </svg>`,
+      void: `<svg viewBox="0 0 120 120" width="120" height="120">
+        <circle cx="60" cy="60" r="45" fill="#18181b" stroke="#f43f5e" stroke-width="2"/>
+        <circle cx="60" cy="60" r="22" fill="#000" stroke="#f43f5e" stroke-width="1.5"/>
+        <circle cx="60" cy="60" r="8" fill="#f43f5e"/>
+      </svg>`,
+      elder: `<svg viewBox="0 0 120 120" width="120" height="120">
+        <rect x="22" y="22" width="76" height="76" rx="14" fill="#312e81" stroke="#818cf8" stroke-width="2.5"/>
+        <circle cx="45" cy="50" r="6" fill="#818cf8"/>
+        <circle cx="75" cy="50" r="6" fill="#818cf8"/>
+        <path d="M42 72 Q60 84 78 72" stroke="#818cf8" stroke-width="3" fill="none"/>
+      </svg>`
+    };
+
+    /* ================= GAME DATA ================= */
+    const RELICS = [
+      { id: 'shard', icon: '💎', name: 'Pecahan Nebula' },
+      { id: 'gear', icon: '⚙️', name: 'Roda Waktu Kuno' },
+      { id: 'prism', icon: '🔮', name: 'Prisma Akasha' },
+      { id: 'core', icon: '🔥', name: 'Inti Supernova' },
+      { id: 'tome', icon: '📜', name: 'Kitab Aeon' }
+    ];
+
+    const MEMORY_NODES = [
+      {
+        id: 'n1',
+        era: 'SIMPUL 01 // NEBULA SAID',
+        location: 'Katedral Bintang Mati',
+        bg: '#040d1a',
+        accent: '#38bdf8',
+        speaker: 'Aria (Arsiparis Astral)',
+        avatar: 'nebula',
+        fragment: '🔮 Memori: Nyanyian terakhir ras pembentuk bintang yang perlahan padam.',
+        text: '"Arsitek, inti keselarasan di katedral ini mulai berderak. Sinyal galaksi terpecah menjadi dua gelombang suara. Bagaimana kita menyelaraskan resonansinya sebelum galaksi runtuh?"',
+        choices: [
+          {
+            text: 'Gunakan resonansi harmonik murni untuk menyatukan gelombang suara.',
+            meta: '-15 Stabilitas | +65 KE | +Pecahan Nebula',
+            effect: (st) => {
+              st.stability -= 15;
+              st.kensa += 65;
+              st.relics.add('shard');
+              return 'Resonansi berhasil diselaraskan! Aria tersenyum tenang dan menyerahkan Pecahan Nebula kepadamu.';
+            }
+          },
+          {
+            text: 'Serap paksa energi gelombang untuk mempercepat pengisian cadangan Kensa.',
+            meta: '-5 Stabilitas | +90 KE | -10 Keselarasan',
+            effect: (st) => {
+              st.stability -= 5;
+              st.kensa += 90;
+              st.sync -= 10;
+              return 'Kensa melimpah deras, namun getaran kejut meninggalkan retakan kecil di struktur memori.';
+            }
+          }
+        ]
+      },
+      {
+        id: 'n2',
+        era: 'SIMPUL 02 // KRONOS-PRIME',
+        location: 'Kota Mesin Tanpa Akhir',
+        bg: '#140c04',
+        accent: '#fbbf24',
+        speaker: 'Chronos-09 (Mekanik Abadi)',
+        avatar: 'clockwork',
+        fragment: '⚙️ Memori: Denyut jam raksasa pengukur detik terakhir peradaban.',
+        text: '"Roda gigi utama kota ini macet oleh sisa-sisa entropi waktu. Jika jarum detik berhenti, seluruh sejarah era ini akan terhapus dari arsip kosmik."',
+        choices: [
+          {
+            text: 'Masuk ke dalam rongga mesin dan lumasi dengan esensi Kensa murni.',
+            meta: '-20 Stabilitas | +75 KE | +Roda Waktu Kuno',
+            effect: (st) => {
+              st.stability -= 20;
+              st.kensa += 75;
+              st.relics.add('gear');
+              return 'Mesin raksasa kembali berdetak megah! Sang Mekanik menganugrahkan Roda Waktu Kuno.';
+            }
+          },
+          {
+            text: 'Lewati putaran roda gigi dan biarkan waktu melaju secara alami.',
+            meta: '-10 Stabilitas | +50 KE | +5 Keselarasan',
+            effect: (st) => {
+              st.stability -= 10;
+              st.kensa += 50;
+              st.sync += 5;
+              return 'Waktu berjalan apa adanya. Stabilitas memori tetap terjaga dengan damai.';
+            }
+          }
+        ]
+      },
+      {
+        id: 'n3',
+        era: 'SIMPUL 03 // SAMUDRA AKASHA',
+        location: 'Kuil Cahaya Reflektif',
+        bg: '#022c22',
+        accent: '#34d399',
+        speaker: 'Oracina (Pendeta Cermin)',
+        avatar: 'crystal',
+        fragment: '🔮 Memori: Pantulan ribuan masa depan yang tidak pernah terjadi.',
+        text: '"Air di kuil ini memantulkan bayangan keputusan terburukmu di masa lalu, Arsitek. Apakah kamu cukup kuat melihat kebenaran di balik cermin akasha?"',
+        choices: [
+          {
+            text: 'Tatap cermin hingga tembus dan ambil intisari kebijaksanaannya.',
+            meta: '-15 Stabilitas | +80 KE | +Prisma Akasha',
+            effect: (st) => {
+              st.stability -= 15;
+              st.kensa += 80;
+              st.relics.add('prism');
+              return 'Kamu melihat melampaui ilusi! Prisma Akasha berpendar terang di telapak tanganmu.';
+            }
+          },
+          {
+            text: 'Pecahkan permukaan air cermin untuk menghindari beban emosional.',
+            meta: '-10 Stabilitas | +45 KE | -15 Keselarasan',
+            effect: (st) => {
+              st.stability -= 10;
+              st.kensa += 45;
+              st.sync -= 15;
+              return 'Kuil bergetar hebat saat cermin pecah, mencoreng kemurnian simpul memori.';
+            }
+          }
+        ]
+      },
+      {
+        id: 'n4',
+        era: 'SIMPUL 04 // INTIPATI SUPERNOVA',
+        location: 'Forj Pembentukan Tata Surya',
+        bg: '#1f0808',
+        accent: '#f43f5e',
+        speaker: 'Ignis-Prime (Penempa Kosmik)',
+        avatar: 'void',
+        fragment: '🔥 Memori: Panas api penciptaan bintang pertama di alam semesta.',
+        text: '"Forj nyaris kehabisan bahan bakar kosmik! Tanpa panas supernova buatan, memori simpul ini akan membeku selamanya dalam kegelapan mutlak."',
+        choices: [
+          {
+            text: 'Gunakan energi neural suit untuk menyalakan kembali tungku inti.',
+            meta: '-25 Stabilitas | +95 KE | +Inti Supernova',
+            effect: (st) => {
+              st.stability -= 25;
+              st.kensa += 95;
+              st.relics.add('core');
+              return 'Ledakan cahaya kosmik menerangi kegelapan! Inti Supernova berhasil diamankan.';
+            }
+          },
+          {
+            text: 'Stabilkan inti menggunakan sisa daya darurat stasiun.',
+            meta: '-10 Stabilitas | +60 KE | +5 Keselarasan',
+            effect: (st) => {
+              st.stability -= 10;
+              st.kensa += 60;
+              st.sync += 5;
+              return 'Suhu forj kembali normal tanpa mengorbankan terlalu banyak daya suit.';
+            }
+          }
+        ]
+      },
+      {
+        id: 'n5',
+        era: 'SIMPUL 05 // GERBANG KEABADIAN',
+        location: 'Perpustakaan Arsip Utama',
+        bg: '#0f172a',
+        accent: '#818cf8',
+        speaker: 'The Grand Archivist',
+        avatar: 'elder',
+        fragment: '📜 Memori: Halaman terakhir dari seluruh narasi eksistensi.',
+        text: '"Selamat datang di ujung segala ingatan, Arsitek. Buku besar kosmetik terbuka di hadapanmu. Apa bab akhir yang akan kau tulis untuk alam semesta ini?"',
+        choices: [
+          {
+            text: 'Tutup arsip dengan damai dan serahkan seluruh Kensa untuk restorasi mutlak.',
+            meta: '-10 Stabilitas | +100 KE | +Kitab Aeon | +10 Keselarasan',
+            effect: (st) => {
+              st.stability -= 10;
+              st.kensa += 100;
+              st.sync += 10;
+              st.relics.add('tome');
+              return 'Arsiparis membungkuk hormat. Kitab Aeon menyatu sempurna dengan kesadaranmu.';
+            }
+          },
+          {
+            text: 'Buka paksa segel terlarang untuk mencari rahasia penciptaan mutlak.',
+            meta: '-20 Stabilitas | +130 KE | -20 Keselarasan',
+            effect: (st) => {
+              st.stability -= 20;
+              st.kensa += 130;
+              st.sync -= 20;
+              return 'Pengetahuan tak terbatas membanjiri pikiranmu, mengguncang fondasi realitas stasiun!';
+            }
+          }
+        ]
+      }
+    ];
+
+    /* ================= GAME STATE ================= */
+    const GameState = {
+      nodeIndex: 1,
+      maxNodes: 5,
+      kensa: 100,
+      sync: 100,
+      stability: 100,
+      maxStability: 100,
+      relics: new Set(),
+      nodePool: [],
+      upgrades: {
+        shield: false,
+        amplifier: false
+      }
+    };
+
+    const stage = document.getElementById('app-stage');
+
+    function updateHUD() {
+      GameState.sync = Math.max(0, Math.min(100, GameState.sync));
+      GameState.stability = Math.max(0, Math.min(GameState.maxStability, GameState.stability));
+      document.getElementById('stat-node').textContent = Math.min(GameState.nodeIndex, GameState.maxNodes);
+      document.getElementById('stat-kensa').textContent = GameState.kensa;
+      document.getElementById('stat-sync').textContent = GameState.sync;
+      document.getElementById('stat-stability').textContent = GameState.stability;
+    }
+
+    function setVisualTheme(bg, accent) {
+      document.documentElement.style.setProperty('--bg-core', bg);
+      document.documentElement.style.setProperty('--accent', accent);
+      starColor = accent;
+    }
+
+    function triggerFlash(callback) {
+      SoundSystem.playWarp();
+      const flash = document.getElementById('flash-overlay');
+      flash.classList.add('active');
+      setTimeout(() => {
+        callback();
+        flash.classList.remove('active');
+      }, 450);
+    }
+
+    function typeWriter(el, text, speed = 16) {
+      el.textContent = '';
+      let i = 0;
+      const timer = setInterval(() => {
+        if (i < text.length) {
+          el.textContent += text.charAt(i);
+          if (i % 4 === 0) SoundSystem.playNote(520 + Math.random() * 200, 'triangle', 0.03, 0.015);
+          i++;
+        } else {
+          clearInterval(timer);
+        }
+      }, speed);
+    }
+
+    /* ================= SCREENS ================= */
+    function renderTitleScreen() {
+      setVisualTheme('#030712', '#38bdf8');
+      updateHUD();
+      stage.innerHTML = `
+        <div class="title-screen">
+          <div style="font-size: 3.5rem;">🌌✨</div>
+          <h1>AEON ARCHITECT</h1>
+          <p>
+            Selamat datang, Arsitek Memori. Selami simpul-simpul ingatan peradaban yang hampir runtuh, 
+            pecahkan teka-teki rekursif kosmik, kumpulkan <strong>5 Relik Peradaban</strong>, dan tentukan takdir akhir alam semesta!
+          </p>
+          <div class="btn-group">
+            <button class="btn-primary" style="font-size: 1.05rem; padding: 14px 28px;" onclick="startJourney()">
+              🚀 Masuk ke Simpul Pertama
+            </button>
+            <button class="btn-secondary" style="font-size: 1.05rem; padding: 14px 24px;" onclick="toggleCodex(true)">
+              📜 Buka Codex
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function startJourney() {
+      GameState.nodeIndex = 1;
+      GameState.kensa = 100;
+      GameState.sync = 100;
+      GameState.stability = 100;
+      GameState.maxStability = 100;
+      GameState.relics.clear();
+      GameState.upgrades = { shield: false, amplifier: false };
+      GameState.nodePool = [...MEMORY_NODES];
+      updateHUD();
+      triggerFlash(() => loadNextNode());
+    }
+
+    function loadNextNode() {
+      if (GameState.stability <= 0 || GameState.sync <= 0) {
+        renderEnding('collapse');
+        return;
+      }
+      if (GameState.nodeIndex > GameState.maxNodes || GameState.nodePool.length === 0) {
+        if (GameState.relics.size >= 5) {
+          renderEnding('true');
+        } else {
+          renderEnding('normal');
+        }
+        return;
+      }
+
+      const node = GameState.nodePool.shift();
+      setVisualTheme(node.bg, node.accent);
+      updateHUD();
+
+      stage.innerHTML = `
+        <div class="node-header">
+          <div>
+            <div class="node-era">${node.era}</div>
+            <div class="node-title">${node.location}</div>
+          </div>
+          <div class="memory-fragment-tag">${node.fragment}</div>
+        </div>
+
+        <div class="vn-scene">
+          <div class="avatar-box">${Avatars[node.avatar]}</div>
+          <div class="dialogue-box">
+            <div class="speaker-name">${node.speaker}</div>
+            <div class="dialogue-text" id="dialogue-target"></div>
+          </div>
+        </div>
+
+        <div class="choices-grid" id="choices-target"></div>
+      `;
+
+      typeWriter(document.getElementById('dialogue-target'), node.text);
+
+      const choicesEl = document.getElementById('choices-target');
+      node.choices.forEach(ch => {
+        const btn = document.createElement('button');
+        btn.className = 'choice-btn';
+        btn.innerHTML = `
+          <span>➤ ${ch.text}</span>
+          <span class="choice-meta">${ch.meta}</span>
+        `;
+        btn.onclick = () => resolveChoice(ch);
+        choicesEl.appendChild(btn);
+      });
+    }
+
+    function resolveChoice(ch) {
+      SoundSystem.playChime();
+      const outcomeText = ch.effect(GameState);
+      if (GameState.upgrades.shield) {
+        GameState.stability = Math.min(GameState.maxStability, GameState.stability + 6);
+      }
+      updateHUD();
+
+      if (GameState.stability <= 0 || GameState.sync <= 0) {
+        setTimeout(() => renderEnding('collapse'), 600);
+        return;
+      }
+
+      stage.innerHTML = `
+        <div class="node-header">
+          <div>
+            <div class="node-era">REKONSTRUKSI SIMPUL</div>
+            <div class="node-title">Status: Simpul Stabil ✓</div>
+          </div>
+        </div>
+
+        <div class="vn-scene">
+          <div class="avatar-box">${Avatars.coreAI}</div>
+          <div class="dialogue-box">
+            <div class="speaker-name">Pusat Stasiun — AI VERA</div>
+            <div class="dialogue-text" id="outcome-target"></div>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content: flex-end;">
+          <button class="btn-primary" onclick="openNexusSanctuary()">
+            ✨ Masuk ke Nexus Sanctuarium
+          </button>
+        </div>
+      `;
+
+      typeWriter(document.getElementById('outcome-target'), outcomeText);
+    }
+
+    function openNexusSanctuary() {
+      setVisualTheme('#030712', '#38bdf8');
+      GameState.nodeIndex++;
+      updateHUD();
+
+      if (GameState.nodeIndex > GameState.maxNodes || GameState.nodePool.length === 0) {
+        renderEnding(GameState.relics.size >= 5 ? 'true' : 'normal');
+        return;
+      }
+
+      const relicsHTML = RELICS.map(r => {
+        const unlocked = GameState.relics.has(r.id);
+        return `
+          <div class="relic-slot ${unlocked ? 'unlocked' : ''}" title="${r.name}">
+            <div>${unlocked ? r.icon : '❓'}</div>
+            <span>${unlocked ? r.name : 'Terkunci'}</span>
+          </div>
+        `;
+      }).join('');
+
+      stage.innerHTML = `
+        <div class="node-header">
+          <div>
+            <div class="node-era">STASIUN UTAMA AEON</div>
+            <div class="node-title">Nexus Sanctuarium & Koleksi Relik</div>
+          </div>
+          <div class="memory-fragment-tag">Relik: ${GameState.relics.size} / 5</div>
+        </div>
+
+        <div class="nexus-grid">
+          <div class="panel">
+            <h3>⚡ Kalibrasi & Peningkatan</h3>
+            <div class="upgrade-item">
+              <div class="upgrade-info">
+                <strong>Injeksi Serum Kensa</strong>
+                <small>Pulihkan +35 Stabilitas Neural</small>
+              </div>
+              <button class="btn-primary" ${GameState.kensa < 30 || GameState.stability >= GameState.maxStability ? 'disabled' : ''} onclick="buyUpgrade('stability')">
+                30 KE
+              </button>
+            </div>
+
+            <div class="upgrade-item">
+              <div class="upgrade-info">
+                <strong>Penyelarasan Gelombang Akasha</strong>
+                <small>Pulihkan +25% Keselarasan Memori</small>
+              </div>
+              <button class="btn-primary" ${GameState.kensa < 35 || GameState.sync >= 100 ? 'disabled' : ''} onclick="buyUpgrade('sync')">
+                35 KE
+              </button>
+            </div>
+
+            <div class="upgrade-item">
+              <div class="upgrade-info">
+                <strong>Perisai Neural Aktif (Permanen)</strong>
+                <small>+6 Stabilitas setiap selesai simpul</small>
+              </div>
+              <button class="btn-primary" ${GameState.kensa < 75 || GameState.upgrades.shield ? 'disabled' : ''} onclick="buyUpgrade('shield')">
+                ${GameState.upgrades.shield ? 'Aktif' : '75 KE'}
+              </button>
+            </div>
+
+            <div class="upgrade-item">
+              <div class="upgrade-info">
+                <strong>Amplifier Kensa Maksimal (Permanen)</strong>
+                <small>Kapasitas Stabilitas Neural jadi 140</small>
+              </div>
+              <button class="btn-primary" ${GameState.kensa < 80 || GameState.upgrades.amplifier ? 'disabled' : ''} onclick="buyUpgrade('amplifier')">
+                ${GameState.upgrades.amplifier ? 'Aktif' : '80 KE'}
+              </button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h3>🏛️ Kamar Relik Peradaban</h3>
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 14px;">
+              Kumpulkan ke-5 relik kosmik untuk membuka <strong>True Ending</strong>!
+            </p>
+            <div class="relic-slots">
+              ${relicsHTML}
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content: flex-end; margin-top: 8px;">
+          <button class="btn-primary" onclick="triggerFlash(() => loadNextNode())">
+            🌌 Lompat ke Simpul Berikutnya (Simpul ${GameState.nodeIndex})
+          </button>
+        </div>
+      `;
+    }
+
+    function buyUpgrade(type) {
+      SoundSystem.playChime();
+      if (type === 'stability' && GameState.kensa >= 30) {
+        GameState.kensa -= 30;
+        GameState.stability += 35;
+      } else if (type === 'sync' && GameState.kensa >= 35) {
+        GameState.kensa -= 35;
+        GameState.sync += 25;
+      } else if (type === 'shield' && GameState.kensa >= 75 && !GameState.upgrades.shield) {
+        GameState.kensa -= 75;
+        GameState.upgrades.shield = true;
+      } else if (type === 'amplifier' && GameState.kensa >= 80 && !GameState.upgrades.amplifier) {
+        GameState.kensa -= 80;
+        GameState.upgrades.amplifier = true;
+        GameState.maxStability = 140;
+        GameState.stability = 140;
+      }
+      GameState.nodeIndex--;
+      openNexusSanctuary();
+    }
+
+    function renderEnding(type) {
+      setVisualTheme('#030712', type === 'true' ? '#fbbf24' : type === 'collapse' ? '#f43f5e' : '#38bdf8');
+      updateHUD();
+
+      let title = '';
+      let icon = '';
+      let desc = '';
+
+      if (type === 'true') {
+        icon = '👑🌌';
+        title = 'TRUE ENDING: PENCIPTA AEON BARU';
+        desc = `Luar biasa! Kamu berhasil menenun kembali seluruh simpul memori dengan ${GameState.kensa} KE dan mengumpulkan kelima Relik Peradaban. Stasiun Aeon menobatkanmu sebagai Arsitek Utama yang melahirkan era semesta baru!`;
+      } else if (type === 'collapse') {
+        icon = '💥🌀';
+        title = 'BAD ENDING: KORUPSI MEMORI TOTAL';
+        desc = `Stabilitas neural atau keselarasan memori menyentuh titik nol! Stasiun terjebak dalam lingkaran waktu yang hancur. Jangan menyerah, atur strategi regenerasi Kensa pada percobaan berikutnya!`;
+      } else {
+        icon = '✨📖';
+        title = 'NORMAL ENDING: PENJAGA ARSIP KOSMIK';
+        desc = `Simpul memori berhasil diamankan dengan damai! Kamu mengumpulkan ${GameState.kensa} KE dan ${GameState.relics.size}/5 Relik. Kumpulkan seluruh relik pada ekspedisi berikutnya untuk membuka rahasia sejati Aeon!`;
+      }
+
+      stage.innerHTML = `
+        <div class="title-screen">
+          <div style="font-size: 3.5rem;">${icon}</div>
+          <h1>${title}</h1>
+          <p>${desc}</p>
+          <button class="btn-primary" style="font-size: 1rem; padding: 12px 24px;" onclick="renderTitleScreen()">
+            🔄 Mulai Ulang Ekspedisi
+          </button>
+        </div>
+      `;
+    }
+
+    function toggleCodex(show) {
+      const modal = document.getElementById('codex-modal');
+      if (show) modal.classList.add('open');
+      else modal.classList.remove('open');
+    }
+
+    // Boot
+    renderTitleScreen();
+  </script>
+</body>
+</html>
